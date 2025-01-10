@@ -41,10 +41,9 @@ class ProfileBot:
                         params.append(self.escape_markdown(profile_data['data']['weight']))
                     if params:
                         first_line += f", {', '.join(params)}"
-                first_line += f" \\(🕒 {self.escape_markdown(profile_data['status'])}\\)"
                 
                 # Make first line a link
-                message_parts.append(f"👤 [{first_line}]({profile_data['profile_url']})")
+                message_parts.append(f"Новая анкета: 👤 [{first_line}]({profile_data['profile_url']}) \\(была {self.escape_markdown(profile_data['status'])}\\)")
                 
                 # Goals
                 if 'goals' in profile_data and profile_data['goals']:
@@ -60,7 +59,7 @@ class ProfileBot:
                     message_parts.append(f"📸 {self.escape_markdown(profile_data['additional_photos'])}")
                 
                 # Join with single line breaks
-                message = "\n".join(message_parts)
+                message = "\n\n".join(message_parts)
                 
                 # Send photo with caption
                 await self.bot.send_photo(
