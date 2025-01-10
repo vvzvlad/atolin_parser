@@ -151,6 +151,9 @@ async def run_periodic_check():
         check_interval = int(os.getenv('CHECK_INTERVAL', '3600'))  # Default 1 hour
         retry_interval = int(os.getenv('RETRY_INTERVAL', '300'))   # Default 5 minutes
         
+        logger.info(f"Search parameters: pages 1-{end_page}, age {age_from}-{age_to}, location {location}")
+        logger.info(f"Intervals: check {check_interval}s, retry {retry_interval}s")
+        
         if not all([end_page, age_from, age_to, location]):
             logger.error("Please set all required environment variables: SEARCH_END_PAGE, SEARCH_AGE_FROM, SEARCH_AGE_TO, SEARCH_LOCATION")
             return
