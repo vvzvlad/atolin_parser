@@ -43,7 +43,9 @@ class ProfileBot:
                         first_line += f", {', '.join(params)}"
                 
                 # Make first line a link
-                message_parts.append(f"Новая анкета: 👤 [{first_line}]({profile_data['profile_url']}) \\(была {self.escape_markdown(profile_data['status'])}\\)")
+                was_prefix = "была " if profile_data['status'] != "на сайте" else ""
+                status_text = f"{was_prefix}{self.escape_markdown(profile_data['status'])}"
+                message_parts.append(f"Новая анкета: 👤 [{first_line}]({profile_data['profile_url']}) \\({status_text}\\)")
                 
                 # Goals
                 if 'goals' in profile_data and profile_data['goals']:
