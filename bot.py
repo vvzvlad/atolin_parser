@@ -104,6 +104,10 @@ class ProfileBot:
         # Check if this is first run (no profiles.json exists)
         is_first_run = not os.path.exists('data/profiles.json')
         
+        if is_first_run:
+            logger.info("First run detected (no profiles.json) - initializing profiles database without sending messages")
+            return
+        
         self.parser.collect_profiles(
             start_page=1,
             end_page=20,
@@ -111,10 +115,6 @@ class ProfileBot:
             age_to=35,
             location_id=self.parser.LOCATIONS["MOSCOW"]
         )
-        
-        if is_first_run:
-            logger.info("First run detected - initializing profiles database without sending messages")
-            return
         
         if not self.parser.new_profiles:
             logger.info("No new profiles found")

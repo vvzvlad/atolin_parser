@@ -334,14 +334,6 @@ class AtolinParser:
                 time.sleep(delay)
             else:
                 logger.error(f"Failed to get content for page {page}")
-        
-        # Save new profiles to new.json
-        if self.new_profiles:
-            with open('data/new.json', 'w', encoding='utf-8') as f:
-                json.dump(self.new_profiles, f, ensure_ascii=False, indent=2)
-            logger.info(f"Saved {len(self.new_profiles)} new profiles to new.json")
-        else:
-            logger.info("No new profiles found")
                 
         # Save all profiles to profiles.json
         if self.profiles:

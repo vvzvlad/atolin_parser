@@ -5,8 +5,4 @@ __pycache__/
 
 # Environment variables
 .env
-
-# JSON files with profiles
-profiles.json
-new.json
 data/
