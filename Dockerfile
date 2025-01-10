@@ -6,4 +6,4 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY *.py .
 
-CMD ["python", "currva_converter_bot.py"]
+CMD ["python", "bot.py"]
