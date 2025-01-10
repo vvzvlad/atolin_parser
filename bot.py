@@ -132,6 +132,8 @@ class ProfileBot:
         if not is_first_run:
             for _profile_id, profile_data in self.parser.new_profiles.items():
                 await self.send_profile(profile_data)
+            # Clear new_profiles after sending messages
+            self.parser.new_profiles = {}
 
 async def run_periodic_check():
     # Load config from environment variables

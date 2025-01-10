@@ -323,6 +323,9 @@ class AtolinParser:
     def collect_profiles(self, end_page, gender=0, age_from=None, age_to=None, location_id=None):
         logger.info(f"Starting collection from page 1 to {end_page}")
         
+        # Clear new profiles at the start of collection
+        self.new_profiles = {}
+        
         for page in range(1, end_page + 1):
             logger.info(f"Processing page {page}")
             content = self.get_search_page(gender=gender, age_from=age_from, age_to=age_to, location_id=location_id, page=page)
