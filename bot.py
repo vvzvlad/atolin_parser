@@ -1,11 +1,12 @@
 import os
 import logging
 from telegram import Bot
-from telegram.error import TelegramError
+from telegram.error import TelegramError, RetryAfter
 import asyncio
 from parser import AtolinParser
 import json
 from datetime import datetime
+import re
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -15,42 +16,88 @@ class ProfileBot:
         self.bot = Bot(token=token)
         self.channel_id = channel_id
         self.parser = AtolinParser()
+        self.default_delay = 10  # Default delay between messages in seconds
+
+    def escape_markdown(self, text: str) -> str:
+        """Escape special characters for MarkdownV2"""
+        need_escape = r'_*[]()~`>#+-=|{}.!'
+        return ''.join(f'\\{c}' if c in need_escape else c for c in str(text))
 
     async def send_profile(self, profile_data):
-        try:
-            message = [f"👤 {profile_data['name_location']} (🕒 {profile_data['status']})"]
-            
-            if 'data' in profile_data and profile_data['data']:
-                params = []
-                if 'height' in profile_data['data']:
-                    params.append(profile_data['data']['height'])
-                if 'weight' in profile_data['data']:
-                    params.append(profile_data['data']['weight'])
-                if params:
-                    message.append(f"\n📋 {', '.join(params)}")
-                    
-            if 'goals' in profile_data and profile_data['goals']:
-                message.append(f"\n🎯 {', '.join(profile_data['goals'])}")
-                    
-            if 'about' in profile_data:
-                message.append(f"\n💬 {profile_data['about']}")
+        max_retries = 3
+        current_retry = 0
+        
+        while current_retry < max_retries:
+            try:
+                message_parts = []
                 
-            message.append(f"\n🔗 <a href='{profile_data['profile_url']}'>Анкета</a>")
+                # Combine all basic info into one line
+                first_line = self.escape_markdown(profile_data['name_location'])
+                if 'data' in profile_data and profile_data['data']:
+                    params = []
+                    if 'height' in profile_data['data']:
+                        params.append(self.escape_markdown(profile_data['data']['height']))
+                    if 'weight' in profile_data['data']:
+                        params.append(self.escape_markdown(profile_data['data']['weight']))
+                    if params:
+                        first_line += f", {', '.join(params)}"
+                first_line += f" \\(🕒 {self.escape_markdown(profile_data['status'])}\\)"
+                
+                # Make first line a link
+                message_parts.append(f"👤 [{first_line}]({profile_data['profile_url']})")
+                
+                # Goals
+                if 'goals' in profile_data and profile_data['goals']:
+                    goals = [self.escape_markdown(goal) for goal in profile_data['goals']]
+                    message_parts.append(f"🎯 {', '.join(goals)}")
+                
+                # About
+                if 'about' in profile_data:
+                    message_parts.append(f"💬 {self.escape_markdown(profile_data['about'])}")
+                
+                # Additional photos info
+                if profile_data['additional_photos']:
+                    message_parts.append(f"📸 {self.escape_markdown(profile_data['additional_photos'])}")
+                
+                # Join with single line breaks
+                message = "\n".join(message_parts)
+                
+                # Send photo with caption
+                await self.bot.send_photo(
+                    chat_id=self.channel_id,
+                    photo=profile_data['photo_url'],
+                    caption=message,
+                    parse_mode='MarkdownV2'
+                )
+                logger.info(f"Sent profile {profile_data['id']} to channel")
+                await asyncio.sleep(self.default_delay)  # Default delay after successful send
+                return
+                
+            except RetryAfter as e:
+                retry_after = int(e.retry_after)
+                logger.warning(f"Flood control exceeded. Waiting {retry_after} seconds")
+                await asyncio.sleep(retry_after)
+                current_retry += 1
+                
+            except TelegramError as e:
+                error_msg = str(e)
+                if "Flood control exceeded" in error_msg:
+                    # Extract retry time from error message
+                    retry_match = re.search(r'Retry in (\d+) seconds', error_msg)
+                    retry_after = int(retry_match.group(1)) if retry_match else self.default_delay
+                    logger.warning(f"Flood control exceeded. Waiting {retry_after} seconds")
+                    await asyncio.sleep(retry_after)
+                    current_retry += 1
+                else:
+                    logger.error(f"Failed to send profile {profile_data['id']}: {str(e)}")
+                    if "Timed out" in error_msg:
+                        await asyncio.sleep(self.default_delay)  # Wait default delay on timeout
+                        current_retry += 1
+                    else:
+                        break  # Break on other errors
 
-            if profile_data['additional_photos']:
-                message.append(f"(📸 {profile_data['additional_photos']})")
-            
-            # Send photo with caption
-            await self.bot.send_photo(
-                chat_id=self.channel_id,
-                photo=profile_data['photo_url'],
-                caption="\n".join(message),
-                parse_mode='HTML'
-            )
-            logger.info(f"Sent profile {profile_data['id']} to channel")
-            
-        except TelegramError as e:
-            logger.error(f"Failed to send profile {profile_data['id']}: {str(e)}")
+        if current_retry >= max_retries:
+            logger.error(f"Failed to send profile {profile_data['id']} after {max_retries} retries")
 
     async def process_new_profiles(self):
         logger.info("Starting profile collection")
@@ -60,7 +107,7 @@ class ProfileBot:
         
         self.parser.collect_profiles(
             start_page=1,
-            end_page=1,
+            end_page=4,
             age_from=18,
             age_to=35,
             location_id=self.parser.LOCATIONS["MOSCOW"]
@@ -78,8 +125,6 @@ class ProfileBot:
         
         for _profile_id, profile_data in self.parser.new_profiles.items():
             await self.send_profile(profile_data)
-            # Add delay between messages to avoid flood limits
-            await asyncio.sleep(2)
 
 async def run_periodic_check():
     # Load config from environment variables
