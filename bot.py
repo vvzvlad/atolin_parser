@@ -106,7 +106,6 @@ class ProfileBot:
         
         if is_first_run:
             logger.info("First run detected (no profiles.json) - initializing profiles database without sending messages")
-            return
         
         self.parser.collect_profiles(
             start_page=1,
@@ -122,8 +121,9 @@ class ProfileBot:
             
         logger.info(f"Found {len(self.parser.new_profiles)} new profiles")
         
-        for _profile_id, profile_data in self.parser.new_profiles.items():
-            await self.send_profile(profile_data)
+        if not is_first_run:
+            for _profile_id, profile_data in self.parser.new_profiles.items():
+                await self.send_profile(profile_data)
 
 async def run_periodic_check():
     # Load config from environment variables
