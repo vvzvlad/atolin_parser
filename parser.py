@@ -8,6 +8,7 @@ import json
 import os
 import re
 from typing import Dict, Optional
+from datetime import datetime
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -286,7 +287,8 @@ class AtolinParser:
                                 "additional_photos": None,
                                 "name_location": None,
                                 "status": None,
-                                "profile_url": profile_url
+                                "profile_url": profile_url,
+                                "saved_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                             }
                             
                             name_elem = link.find("span", class_="user-name")
@@ -334,12 +336,12 @@ class AtolinParser:
                 time.sleep(delay)
             else:
                 logger.error(f"Failed to get content for page {page}")
-                
+            
         # Save all profiles to profiles.json
         if self.profiles:
             with open('data/profiles.json', 'w', encoding='utf-8') as f:
                 json.dump(self.profiles, f, ensure_ascii=False, indent=2)
-            logger.info(f"Saved {len(self.profiles)} total profiles to profiles.json")
+            logger.info(f"Saved {len(self.profiles)} total profiles to data/profiles.json")
         else:
             logger.warning("No profiles collected")
 

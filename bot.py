@@ -57,9 +57,11 @@ class ProfileBot:
                 # Additional photos info
                 if profile_data['additional_photos']:
                     message_parts.append(f"📸 {self.escape_markdown(profile_data['additional_photos'])}")
+
+                message_parts.append(f"\n")
                 
                 # Join with single line breaks
-                message = "\n\n".join(message_parts)
+                message = "\n".join(message_parts)
                 
                 # Send photo with caption
                 await self.bot.send_photo(
