@@ -140,4 +140,4 @@ class AtolinParser:
 
 if __name__ == "__main__":
     parser = AtolinParser()
-    parser.collect_profiles(start_page=1, end_page=3)
+    parser.collect_profiles(start_page=1, end_page=4)
