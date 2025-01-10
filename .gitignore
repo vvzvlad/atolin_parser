@@ -9,3 +9,4 @@ __pycache__/
 # JSON files with profiles
 profiles.json
 new.json
+data/

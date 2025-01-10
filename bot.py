@@ -102,11 +102,11 @@ class ProfileBot:
         logger.info("Starting profile collection")
         
         # Check if this is first run (no profiles.json exists)
-        is_first_run = not os.path.exists('profiles.json')
+        is_first_run = not os.path.exists('data/profiles.json')
         
         self.parser.collect_profiles(
             start_page=1,
-            end_page=4,
+            end_page=20,
             age_from=18,
             age_to=35,
             location_id=self.parser.LOCATIONS["MOSCOW"]

@@ -155,6 +155,9 @@ class AtolinParser:
         }
         self.profiles = {}
         self.new_profiles = {}
+        
+        # Create data directory if it doesn't exist
+        os.makedirs('data', exist_ok=True)
         self.load_existing_profiles()
 
     def clean_name_location(self, text):
@@ -164,8 +167,8 @@ class AtolinParser:
 
     def load_existing_profiles(self):
         try:
-            if os.path.exists('profiles.json'):
-                with open('profiles.json', 'r', encoding='utf-8') as f:
+            if os.path.exists('data/profiles.json'):
+                with open('data/profiles.json', 'r', encoding='utf-8') as f:
                     self.profiles = json.load(f)
                 logger.info(f"Loaded {len(self.profiles)} existing profiles")
         except Exception as e:
@@ -334,7 +337,7 @@ class AtolinParser:
         
         # Save new profiles to new.json
         if self.new_profiles:
-            with open('new.json', 'w', encoding='utf-8') as f:
+            with open('data/new.json', 'w', encoding='utf-8') as f:
                 json.dump(self.new_profiles, f, ensure_ascii=False, indent=2)
             logger.info(f"Saved {len(self.new_profiles)} new profiles to new.json")
         else:
@@ -342,7 +345,7 @@ class AtolinParser:
                 
         # Save all profiles to profiles.json
         if self.profiles:
-            with open('profiles.json', 'w', encoding='utf-8') as f:
+            with open('data/profiles.json', 'w', encoding='utf-8') as f:
                 json.dump(self.profiles, f, ensure_ascii=False, indent=2)
             logger.info(f"Saved {len(self.profiles)} total profiles to profiles.json")
         else:
