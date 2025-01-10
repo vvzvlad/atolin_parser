@@ -148,6 +148,8 @@ async def run_periodic_check():
         age_from = int(os.getenv('SEARCH_AGE_FROM'))
         age_to = int(os.getenv('SEARCH_AGE_TO'))
         location = os.getenv('SEARCH_LOCATION')
+        check_interval = int(os.getenv('CHECK_INTERVAL', '3600'))  # Default 1 hour
+        retry_interval = int(os.getenv('RETRY_INTERVAL', '300'))   # Default 5 minutes
         
         if not all([end_page, age_from, age_to, location]):
             logger.error("Please set all required environment variables: SEARCH_END_PAGE, SEARCH_AGE_FROM, SEARCH_AGE_TO, SEARCH_LOCATION")
@@ -171,13 +173,13 @@ async def run_periodic_check():
                 location=location
             )
             
-            logger.info("Waiting for 1 hour before next check")
-            await asyncio.sleep(3600)  # 1 hour in seconds
+            logger.info(f"Waiting for {check_interval} seconds before next check")
+            await asyncio.sleep(check_interval)
             
         except Exception as e:
             logger.error(f"Error during periodic check: {str(e)}")
-            logger.info("Retrying in 5 minutes")
-            await asyncio.sleep(300)  # 5 minutes in seconds
+            logger.info(f"Retrying in {retry_interval} seconds")
+            await asyncio.sleep(retry_interval)
 
 if __name__ == "__main__":
     asyncio.run(run_periodic_check()) 
