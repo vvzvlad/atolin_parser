@@ -1,2 +1,11 @@
-new.json
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environment variables
+.env
+
+# JSON files with profiles
 profiles.json
+new.json
