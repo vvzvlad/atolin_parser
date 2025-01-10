@@ -318,10 +318,10 @@ class AtolinParser:
             logger.error(f"Failed to parse HTML: {str(e)}")
             return None
 
-    def collect_profiles(self, start_page=1, end_page=20, gender=0, age_from=18, age_to=35, location_id=LOCATIONS["MOSCOW"]):
-        logger.info(f"Starting collection from page {start_page} to {end_page}")
+    def collect_profiles(self, end_page, gender=0, age_from=None, age_to=None, location_id=None):
+        logger.info(f"Starting collection from page 1 to {end_page}")
         
-        for page in range(start_page, end_page + 1):
+        for page in range(1, end_page + 1):
             logger.info(f"Processing page {page}")
             content = self.get_search_page(gender=gender, age_from=age_from, age_to=age_to, location_id=location_id, page=page)
             
@@ -345,4 +345,9 @@ class AtolinParser:
 
 if __name__ == "__main__":
     parser = AtolinParser()
-    parser.collect_profiles()
+    parser.collect_profiles(
+        end_page=20,
+        age_from=18,
+        age_to=35,
+        location_id=AtolinParser.LOCATIONS["MOSCOW"]
+    )

@@ -98,7 +98,7 @@ class ProfileBot:
         if current_retry >= max_retries:
             logger.error(f"Failed to send profile {profile_data['id']} after {max_retries} retries")
 
-    async def process_new_profiles(self):
+    async def process_new_profiles(self, end_page, age_from, age_to, location):
         logger.info("Starting profile collection")
         
         # Check if this is first run (no profiles.json exists)
@@ -107,12 +107,16 @@ class ProfileBot:
         if is_first_run:
             logger.info("First run detected (no profiles.json) - initializing profiles database without sending messages")
         
+        # Validate location
+        if location not in self.parser.LOCATIONS:
+            logger.error(f"Invalid location: {location}")
+            return
+            
         self.parser.collect_profiles(
-            start_page=1,
-            end_page=20,
-            age_from=18,
-            age_to=35,
-            location_id=self.parser.LOCATIONS["MOSCOW"]
+            end_page=end_page,
+            age_from=age_from,
+            age_to=age_to,
+            location_id=self.parser.LOCATIONS[location]
         )
         
         if not self.parser.new_profiles:
@@ -133,6 +137,21 @@ async def run_periodic_check():
     if not token or not channel_id:
         logger.error("Please set TG_BOT_TOKEN and TG_CHANNEL_ID environment variables")
         return
+    
+    # Load search parameters from environment variables
+    try:
+        end_page = int(os.getenv('SEARCH_END_PAGE'))
+        age_from = int(os.getenv('SEARCH_AGE_FROM'))
+        age_to = int(os.getenv('SEARCH_AGE_TO'))
+        location = os.getenv('SEARCH_LOCATION')
+        
+        if not all([end_page, age_from, age_to, location]):
+            logger.error("Please set all required environment variables: SEARCH_END_PAGE, SEARCH_AGE_FROM, SEARCH_AGE_TO, SEARCH_LOCATION")
+            return
+            
+    except (TypeError, ValueError) as e:
+        logger.error(f"Invalid environment variables: {str(e)}")
+        return
         
     bot = ProfileBot(token, channel_id)
     
@@ -141,7 +160,12 @@ async def run_periodic_check():
             current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             logger.info(f"Starting periodic check at {current_time}")
             
-            await bot.process_new_profiles()
+            await bot.process_new_profiles(
+                end_page=end_page,
+                age_from=age_from,
+                age_to=age_to,
+                location=location
+            )
             
             logger.info("Waiting for 1 hour before next check")
             await asyncio.sleep(3600)  # 1 hour in seconds
