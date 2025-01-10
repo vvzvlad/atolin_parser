@@ -159,6 +159,7 @@ class AtolinParser:
 
     def clean_name_location(self, text):
         text = text.replace("Девушка", "").replace("Москва,", "").strip()
+        text = re.sub(r'\s+', ' ', text)
         return text
 
     def load_existing_profiles(self):
