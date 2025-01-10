@@ -263,6 +263,11 @@ class AtolinParser:
                 for item in results.find_all("div", recursive=False):
                     if "data-key" in item.attrs:
                         profile_id = item['data-key']
+                        
+                        # Skip if profile already exists
+                        if profile_id in self.profiles:
+                            continue
+                            
                         link = item.find("a", class_="viewed")
                         if link:
                             img = link.find("img")
@@ -294,17 +299,14 @@ class AtolinParser:
                             if photo_count:
                                 profile_data["additional_photos"] = photo_count.text.strip()
                             
-                            # Get profile details
+                            # Get profile details only for new profiles
                             if details := self.get_profile_details(profile_url):
                                 profile_data.update(details)
                             
-                            # Check if this is a new profile
-                            if profile_id not in self.profiles:
-                                self.new_profiles[profile_id] = profile_data
-                                logger.info(f"Found new profile: {profile_id}")
-                            
-                            # Update or add to all profiles
+                            # Add to new profiles and all profiles
+                            self.new_profiles[profile_id] = profile_data
                             self.profiles[profile_id] = profile_data
+                            logger.info(f"Found new profile: {profile_id}")
             else:
                 logger.error("Results container not found")
                 return None
