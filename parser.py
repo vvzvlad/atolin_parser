@@ -431,9 +431,16 @@ class AtolinParser:
 
     def recheck_low_score_profiles(self):
         """Recheck all profiles with score < min_score_threshold"""
-        for profile_id, profile_data in list(self.profiles.items()):
-            if profile_data.get('score', 0) < self.min_score_threshold and profile_id not in self.new_profiles:
-                logger.info(f"Rechecking low-score profile {profile_id}")
+        low_score_profiles = [p for p in self.profiles.items() if p[1].get('score', 0) < self.min_score_threshold]
+        if not low_score_profiles:
+            logger.info("No low-score profiles to recheck")
+            return
+            
+        logger.info(f"Found {len(low_score_profiles)} profiles with low score, starting recheck")
+        
+        for index, (profile_id, profile_data) in enumerate(low_score_profiles, 1):
+            if profile_id not in self.new_profiles:
+                logger.info(f"Rechecking low-score profile {profile_id} ({index}/{len(low_score_profiles)})")
                 
                 # Get fresh profile details
                 if details := self.get_profile_details(profile_data['profile_url']):
