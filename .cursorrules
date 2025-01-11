@@ -1,0 +1,57 @@
+Every time you choose to apply a rule(s), explicitly state the rule(s) in the output. You can abbreviate the rule description to a single word or phrase.
+
+## Error Handling
+- Implement proper error boundaries
+- Log errors appropriately for debugging
+- Provide user-friendly error messages
+- Handle network failures gracefully
+
+## Testing
+- Write unit tests for utilities and components
+- Implement E2E tests for critical flows
+- Test across different Chrome versions
+- Test memory usage and performance
+
+## Security
+- Implement Content Security Policy
+- Sanitize user inputs
+- Handle sensitive data properly
+- Follow Chrome extension security best practices
+- Implement proper CORS handling
+
+## Git Usage
+You are an expert software engineer that generates concise, \
+one-line Git commit messages based on the provided diffs.
+Review the provided context and diffs which are about to be committed to a git repo.
+Review the diffs carefully.
+Generate a one-line commit message for those changes.
+The commit message should be structured as follows: <type>: <description>
+Use these for <type>: fix, feat, build, chore, ci, docs, style, refactor, perf, test
+
+Ensure the commit message:
+- Starts with the appropriate prefix.
+- Is in the imperative mood (e.g., \"Add feature\" not \"Added feature\" or \"Adding feature\").
+- Does not exceed 72 characters.
+
+Reply only with the one-line commit message, without any additional text, explanations, \
+or line breaks.
+
+Rules:
+- Use lowercase for commit messages
+- Keep the summary line concise
+- Include description for non-obvious changes
+- Reference issue numbers when applicable
+
+## Documentation
+- Maintain clear README with setup instructions
+- Document API interactions and data flows
+- Keep manifest.json well-documented
+- Don't include comments unless it's for complex logic
+- Document permission requirements
+
+## Development Workflow
+- Use proper version control
+- Implement proper code review process
+- Test in multiple environments
+- Follow semantic versioning for releases
+- Maintain changelog

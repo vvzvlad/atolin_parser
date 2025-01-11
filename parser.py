@@ -204,6 +204,16 @@ class AtolinParser:
                     timeout=timeout,
                     verify=False  # Disable SSL verification when using proxy
                 )
+                if response.status_code == 404:
+                    # If this is a profile URL, remove it from profiles
+                    profile_id = url.split('/')[-1]
+                    if profile_id in self.profiles:
+                        logger.info(f"Profile {profile_id} returned 404, removing from database")
+                        del self.profiles[profile_id]
+                        # Save profiles after deletion
+                        with open('data/profiles.json', 'w', encoding='utf-8') as f:
+                            json.dump(self.profiles, f, ensure_ascii=False, indent=2)
+                    return None
                 response.raise_for_status()
                 return response
             except requests.RequestException as e:
@@ -213,6 +223,15 @@ class AtolinParser:
                     time.sleep(retry_delay)
                 else:
                     logger.error(f"Request failed for {url} after {max_retries} attempts: {str(e)}")
+                    # If this was a 404 error on the last attempt, handle profile deletion
+                    if isinstance(e, requests.exceptions.HTTPError) and e.response.status_code == 404:
+                        profile_id = url.split('/')[-1]
+                        if profile_id in self.profiles:
+                            logger.info(f"Profile {profile_id} returned 404, removing from database")
+                            del self.profiles[profile_id]
+                            # Save profiles after deletion
+                            with open('data/profiles.json', 'w', encoding='utf-8') as f:
+                                json.dump(self.profiles, f, ensure_ascii=False, indent=2)
         return None
 
     def clean_name_location(self, text):
