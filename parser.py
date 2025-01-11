@@ -215,7 +215,20 @@ class AtolinParser:
         if "goals" in profile_data and isinstance(profile_data["goals"], list):
             score += sum(0.5 for goal in profile_data["goals"] if goal != "спонсора")
             
-        return score
+        # Score for profile lifetime
+        profile_id = profile_data.get("id")
+        if profile_id and profile_id in self.profiles:
+            stored_profile = self.profiles[profile_id]
+            if "first_seen" in stored_profile:
+                try:
+                    first_seen = datetime.strptime(stored_profile["first_seen"], "%Y-%m-%d %H:%M:%S")
+                    now = datetime.now()
+                    days_alive = (now - first_seen).total_seconds() / (24 * 3600)  # Convert to days
+                    score += days_alive  # Add 1 point per day
+                except (ValueError, TypeError) as e:
+                    logger.error(f"Failed to calculate lifetime score for profile {profile_id}: {str(e)}")
+            
+        return round(score, 2)  # Round to 2 decimal places for cleaner display
 
     def get_profile_details(self, profile_url: str) -> Optional[dict]:
         try:
