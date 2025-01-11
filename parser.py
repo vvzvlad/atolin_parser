@@ -283,7 +283,7 @@ class AtolinParser:
 
     def get_profile_details(self, profile_url: str) -> Optional[dict]:
         try:
-            delay = random.uniform(0.2, 0.5)
+            delay = random.uniform(1, 5)
             logger.info(f"Waiting {delay:.2f} seconds before requesting profile details")
             time.sleep(delay)
             
@@ -429,7 +429,7 @@ class AtolinParser:
                     else:
                         logger.info(f"Profile {profile_id} score still low ({profile_data.get('score', 0)})")
                 
-                time.sleep(random.uniform(0.2, 0.5))
+                time.sleep(random.uniform(1, 5))
 
     def collect_profiles(self, end_page, age_from, age_to, location_id):
         logger.info(f"Starting collection from page 1 to {end_page}")
@@ -449,7 +449,7 @@ class AtolinParser:
                 self.get_results_container(content)
                 
                 # Random delay between requests to avoid blocking
-                delay = random.uniform(0.2, 0.5)
+                delay = random.uniform(1, 5)
                 logger.info(f"Waiting {delay:.2f} seconds before next request")
                 time.sleep(delay)
             else:
