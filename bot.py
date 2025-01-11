@@ -62,7 +62,7 @@ class ProfileBot:
 
                 # Score info
                 if 'score' in profile_data:
-                    message_parts.append(f"⭐️ Рейтинг: {self.escape_markdown(str(profile_data['score']))}")
+                    message_parts.append(f"⭐️ Spam score: {self.escape_markdown(str(profile_data['score']))}")
 
                 message_parts.append(f"\n")
                 
@@ -77,7 +77,7 @@ class ProfileBot:
                     parse_mode='MarkdownV2'
                 )
                 logger.info(f"Sent profile {profile_data['id']} to channel")
-                await asyncio.sleep(self.default_delay)  # Default delay after successful send
+                await asyncio.sleep(self.default_delay)  
                 return
                 
             except RetryAfter as e:
