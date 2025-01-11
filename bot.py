@@ -128,15 +128,21 @@ class ProfileBot:
         )
         
         if not self.parser.new_profiles:
-            logger.info("No new profiles found")
+            logger.info("No new profiles to send")
             return
             
         logger.info(f"Found {len(self.parser.new_profiles)} new profiles")
         
         if not is_first_run:
-            for _profile_id, profile_data in self.parser.new_profiles.items():
-                await self.send_profile(profile_data)
-            # Clear new_profiles after sending messages
+            # Send only profiles with score >= min_score_threshold
+            for profile_id, profile_data in self.parser.new_profiles.items():
+                if profile_data.get('score', 0) >= self.parser.min_score_threshold:
+                    await self.send_profile(profile_data)
+                    logger.info(f"Sent profile {profile_id} with score {profile_data.get('score', 0)}")
+                else:
+                    logger.info(f"Profile {profile_id} has low score ({profile_data.get('score', 0)}), skipping")
+            
+            # Clear new_profiles after processing
             self.parser.new_profiles = {}
 
 async def run_periodic_check():

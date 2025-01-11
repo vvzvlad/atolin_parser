@@ -14,6 +14,12 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 class AtolinParser:
+    # Score settings
+    SCORE_PER_50_CHARS = 1
+    SCORE_PER_PHOTO = 1
+    SCORE_PER_GOAL = 0.5
+    SCORE_PER_DAY = 1
+
     # Location IDs
     LOCATIONS: Dict[str, int] = {
         # Capitals
@@ -157,6 +163,10 @@ class AtolinParser:
         self.profiles = {}
         self.new_profiles = {}
         
+        # Load min score threshold from env
+        self.min_score_threshold = float(os.getenv('MIN_SCORE_THRESHOLD', '2.0'))
+        logger.info(f"Using minimum score threshold: {self.min_score_threshold}")
+        
         # Create data directory if it doesn't exist
         os.makedirs('data', exist_ok=True)
         self.load_existing_profiles()
@@ -201,19 +211,19 @@ class AtolinParser:
         
         # Score for description length
         if "about" in profile_data and isinstance(profile_data["about"], str):
-            score += len(profile_data["about"]) // 50
+            score += len(profile_data["about"]) // 50 * self.SCORE_PER_50_CHARS
             
         # Score for additional photos
         if "additional_photos" in profile_data and profile_data["additional_photos"]:
             try:
                 additional_photos = int(profile_data["additional_photos"].split()[0])
-                score += additional_photos
+                score += additional_photos * self.SCORE_PER_PHOTO
             except (ValueError, IndexError):
                 pass
                 
         # Score for goals
         if "goals" in profile_data and isinstance(profile_data["goals"], list):
-            score += sum(0.5 for goal in profile_data["goals"] if goal != "спонсора")
+            score += sum(self.SCORE_PER_GOAL for goal in profile_data["goals"] if goal != "спонсора")
             
         # Score for profile lifetime
         profile_id = profile_data.get("id")
@@ -224,7 +234,7 @@ class AtolinParser:
                     first_seen = datetime.strptime(stored_profile["first_seen"], "%Y-%m-%d %H:%M:%S")
                     now = datetime.now()
                     days_alive = (now - first_seen).total_seconds() / (24 * 3600)  # Convert to days
-                    score += days_alive  # Add 1 point per day
+                    score += days_alive * self.SCORE_PER_DAY
                 except (ValueError, TypeError) as e:
                     logger.error(f"Failed to calculate lifetime score for profile {profile_id}: {str(e)}")
             
@@ -357,15 +367,41 @@ class AtolinParser:
             logger.error(f"Failed to parse HTML: {str(e)}")
             return None
 
-    def collect_profiles(self, end_page, gender=0, age_from=None, age_to=None, location_id=None):
+    def recheck_low_score_profiles(self):
+        """Recheck all profiles with score < min_score_threshold"""
+        for profile_id, profile_data in list(self.profiles.items()):
+            if profile_data.get('score', 0) < self.min_score_threshold and profile_id not in self.new_profiles:
+                logger.info(f"Rechecking low-score profile {profile_id}")
+                
+                # Get fresh profile details
+                if details := self.get_profile_details(profile_data['profile_url']):
+                    # Update profile with new details
+                    profile_data.update(details)
+                    # Recalculate score
+                    profile_data['score'] = self.calculate_profile_score(profile_data)
+                    
+                    if profile_data.get('score', 0) >= self.min_score_threshold:
+                        logger.info(f"Profile {profile_id} score increased to {profile_data['score']}")
+                        # Add to new profiles for notification
+                        self.new_profiles[profile_id] = profile_data
+                    else:
+                        logger.info(f"Profile {profile_id} score still low ({profile_data.get('score', 0)})")
+                
+                time.sleep(random.uniform(1.0, 2.0))  # Add delay between requests
+
+    def collect_profiles(self, end_page, age_from, age_to, location_id):
         logger.info(f"Starting collection from page 1 to {end_page}")
         
         # Clear new profiles at the start of collection
         self.new_profiles = {}
         
+        # First recheck existing low-score profiles
+        self.recheck_low_score_profiles()
+        
+        # Then collect new profiles
         for page in range(1, end_page + 1):
             logger.info(f"Processing page {page}")
-            content = self.get_search_page(gender=gender, age_from=age_from, age_to=age_to, location_id=location_id, page=page)
+            content = self.get_search_page(gender=0, age_from=age_from, age_to=age_to, location_id=location_id, page=page)
             
             if content:
                 self.get_results_container(content)
