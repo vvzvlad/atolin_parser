@@ -193,21 +193,27 @@ class AtolinParser:
         os.makedirs('data', exist_ok=True)
         self.load_existing_profiles()
 
-    def make_request(self, url: str, timeout: int = 10) -> Optional[requests.Response]:
+    def make_request(self, url: str, timeout: int = 10, max_retries: int = 3) -> Optional[requests.Response]:
         """Make HTTP request with proxy support and error handling"""
-        try:
-            response = requests.get(
-                url, 
-                headers=self.headers, 
-                proxies=self.proxies,
-                timeout=timeout,
-                verify=False  # Disable SSL verification when using proxy
-            )
-            response.raise_for_status()
-            return response
-        except requests.RequestException as e:
-            logger.error(f"Request failed for {url}: {str(e)}")
-            return None
+        for attempt in range(max_retries):
+            try:
+                response = requests.get(
+                    url, 
+                    headers=self.headers, 
+                    proxies=self.proxies,
+                    timeout=timeout,
+                    verify=False  # Disable SSL verification when using proxy
+                )
+                response.raise_for_status()
+                return response
+            except requests.RequestException as e:
+                if attempt < max_retries - 1:
+                    retry_delay = random.uniform(10, 30)
+                    logger.warning(f"Request failed for {url} (attempt {attempt + 1}/{max_retries}): {str(e)}. Retrying in {retry_delay:.1f} seconds...")
+                    time.sleep(retry_delay)
+                else:
+                    logger.error(f"Request failed for {url} after {max_retries} attempts: {str(e)}")
+        return None
 
     def clean_name_location(self, text):
         text = text.replace("Девушка", "").replace("Москва,", "").strip()
