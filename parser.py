@@ -9,6 +9,10 @@ import os
 import re
 from typing import Dict, Optional
 from datetime import datetime
+import urllib3
+
+# Disable SSL warning
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
