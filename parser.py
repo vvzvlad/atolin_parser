@@ -196,6 +196,27 @@ class AtolinParser:
             logger.error(f"Failed to load page: {str(e)}")
             return None
 
+    def calculate_profile_score(self, profile_data: dict) -> float:
+        score = 0
+        
+        # Score for description length
+        if "about" in profile_data and isinstance(profile_data["about"], str):
+            score += len(profile_data["about"]) // 50
+            
+        # Score for additional photos
+        if "additional_photos" in profile_data and profile_data["additional_photos"]:
+            try:
+                additional_photos = int(profile_data["additional_photos"].split()[0])
+                score += additional_photos
+            except (ValueError, IndexError):
+                pass
+                
+        # Score for goals
+        if "goals" in profile_data and isinstance(profile_data["goals"], list):
+            score += sum(0.5 for goal in profile_data["goals"] if goal != "спонсора")
+            
+        return score
+
     def get_profile_details(self, profile_url: str) -> Optional[dict]:
         try:
             delay = random.uniform(1.0, 2.0)
@@ -288,7 +309,7 @@ class AtolinParser:
                                 "name_location": None,
                                 "status": None,
                                 "profile_url": profile_url,
-                                "saved_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                                "first_seen": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                             }
                             
                             name_elem = link.find("span", class_="user-name")
@@ -308,11 +329,14 @@ class AtolinParser:
                             # Get profile details only for new profiles
                             if details := self.get_profile_details(profile_url):
                                 profile_data.update(details)
+                                
+                            # Calculate and add score
+                            profile_data["score"] = self.calculate_profile_score(profile_data)
                             
                             # Add to new profiles and all profiles
                             self.new_profiles[profile_id] = profile_data
                             self.profiles[profile_id] = profile_data
-                            logger.info(f"Found new profile: {profile_id}")
+                            logger.info(f"Found new profile: {profile_id} with score: {profile_data['score']}")
             else:
                 logger.error("Results container not found")
                 return None

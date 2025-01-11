@@ -60,6 +60,10 @@ class ProfileBot:
                 if profile_data['additional_photos']:
                     message_parts.append(f"📸 {self.escape_markdown(profile_data['additional_photos'])}")
 
+                # Score info
+                if 'score' in profile_data:
+                    message_parts.append(f"⭐️ Рейтинг: {self.escape_markdown(str(profile_data['score']))}")
+
                 message_parts.append(f"\n")
                 
                 # Join with single line breaks
