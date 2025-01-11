@@ -10,6 +10,7 @@ import re
 from typing import Dict, Optional
 from datetime import datetime
 import urllib3
+from fake_headers import Headers
 
 # Disable SSL warning
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -19,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 class AtolinParser:
     # Score settings
-    SCORE_PER_50_CHARS = 1
+    SCORE_PER_50_CHARS = 1.1
     SCORE_PER_PHOTO = 1
     SCORE_PER_GOAL = 0.5
     SCORE_PER_DAY = 1
@@ -161,9 +162,6 @@ class AtolinParser:
     def __init__(self):
         self.base_url = "https://atolin.ru/anketa/search"
         self.domain = "https://atolin.ru"
-        self.headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-        }
         self.profiles = {}
         self.new_profiles = {}
         
@@ -197,12 +195,15 @@ class AtolinParser:
         """Make HTTP request with proxy support and error handling"""
         for attempt in range(max_retries):
             try:
+                headers = Headers(os="win", headers=True).generate()
+                headers['Accept-Encoding'] = '' # Disable compression
+                
                 response = requests.get(
                     url, 
-                    headers=self.headers, 
+                    headers=headers, 
                     proxies=self.proxies,
                     timeout=timeout,
-                    verify=False  # Disable SSL verification when using proxy
+                    verify=False  
                 )
                 if response.status_code == 404:
                     # If this is a profile URL, remove it from profiles
