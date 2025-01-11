@@ -167,9 +167,43 @@ class AtolinParser:
         self.min_score_threshold = float(os.getenv('MIN_SCORE_THRESHOLD', '2.0'))
         logger.info(f"Using minimum score threshold: {self.min_score_threshold}")
         
+        # Setup proxy if configured
+        self.proxies = None
+        proxy = os.getenv('PROXY')
+        if proxy:
+            if proxy.startswith('socks5://'):
+                # For SOCKS5 proxy we use the full URL
+                self.proxies = {
+                    'http': proxy,
+                    'https': proxy
+                }
+            elif proxy.startswith('http://'):
+                # For HTTP proxy we use the full URL
+                self.proxies = {
+                    'http': proxy,
+                    'https': proxy
+                }
+            logger.info(f"Using proxy: {proxy}")
+        
         # Create data directory if it doesn't exist
         os.makedirs('data', exist_ok=True)
         self.load_existing_profiles()
+
+    def make_request(self, url: str, timeout: int = 10) -> Optional[requests.Response]:
+        """Make HTTP request with proxy support and error handling"""
+        try:
+            response = requests.get(
+                url, 
+                headers=self.headers, 
+                proxies=self.proxies,
+                timeout=timeout,
+                verify=False  # Disable SSL verification when using proxy
+            )
+            response.raise_for_status()
+            return response
+        except requests.RequestException as e:
+            logger.error(f"Request failed for {url}: {str(e)}")
+            return None
 
     def clean_name_location(self, text):
         text = text.replace("Девушка", "").replace("Москва,", "").strip()
@@ -197,14 +231,11 @@ class AtolinParser:
         
         url = f"{self.base_url}?{urlencode(params)}"
         
-        try:
-            response = requests.get(url, headers=self.headers, timeout=10)
-            response.raise_for_status()
+        response = self.make_request(url)
+        if response:
             logger.info(f"Successfully loaded page {page} with parameters: age {age_from}-{age_to}, gender {gender}, location {location_id}")
             return response.text
-        except requests.RequestException as e:
-            logger.error(f"Failed to load page: {str(e)}")
-            return None
+        return None
 
     def calculate_profile_score(self, profile_data: dict) -> float:
         score = 0
@@ -246,8 +277,9 @@ class AtolinParser:
             logger.info(f"Waiting {delay:.2f} seconds before requesting profile details")
             time.sleep(delay)
             
-            response = requests.get(profile_url, headers=self.headers, timeout=10)
-            response.raise_for_status()
+            response = self.make_request(profile_url)
+            if not response:
+                return None
             
             soup = BeautifulSoup(response.text, 'html.parser')
             details = {}
