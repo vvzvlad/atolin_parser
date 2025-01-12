@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 class AtolinParser:
     # Score settings
     SCORE_PER_50_CHARS = 1.1
-    SCORE_PER_PHOTO = 1
+    SCORE_PER_PHOTO = 0.8
     SCORE_PER_GOAL = 0.5
     SCORE_PER_DAY = 0.8
 

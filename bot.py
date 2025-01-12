@@ -62,7 +62,7 @@ class ProfileBot:
 
                 # Score info
                 if 'score' in profile_data:
-                    message_parts.append(f"⭐️ Spam score: {self.escape_markdown(str(profile_data['score']))}")
+                    message_parts.append(f"⭐️ Antifroud score: {self.escape_markdown(str(profile_data['score']))}")
 
                 message_parts.append(f"\n")
                 
