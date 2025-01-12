@@ -442,10 +442,39 @@ class AtolinParser:
             if profile_id not in self.new_profiles:
                 logger.info(f"Rechecking low-score profile {profile_id} ({index}/{len(low_score_profiles)})")
                 
-                # Get fresh profile details
-                if details := self.get_profile_details(profile_data['profile_url']):
-                    # Update profile with new details
-                    profile_data.update(details)
+                try:
+                    # Get fresh profile page
+                    response = self.make_request(profile_data['profile_url'])
+                    if not response:
+                        continue
+                        
+                    soup = BeautifulSoup(response.text, 'html.parser')
+                    
+                    # Update basic profile data
+                    link = soup.find("a", class_="viewed")
+                    if link:
+                        img = link.find("img")
+                        if img and "no-photo" not in img.get("class", []):
+                            profile_data["photo_url"] = urljoin(self.domain, img['src'])
+                            
+                        name_elem = link.find("span", class_="user-name")
+                        if name_elem:
+                            profile_data["name_location"] = self.clean_name_location(name_elem.text.strip())
+                            
+                        was_elem = link.find("span", class_="user-was")
+                        if was_elem:
+                            status = was_elem.find("span", class_=["online", "offline", "oldline"])
+                            if status:
+                                profile_data["status"] = status.text.strip()
+                                
+                        photo_count = link.find("span", class_="viewed-count")
+                        if photo_count:
+                            profile_data["additional_photos"] = photo_count.text.strip()
+                    
+                    # Get fresh profile details
+                    if details := self.get_profile_details(profile_data['profile_url']):
+                        profile_data.update(details)
+                    
                     # Recalculate score
                     profile_data['score'] = self.calculate_profile_score(profile_data)
                     
@@ -455,6 +484,9 @@ class AtolinParser:
                         self.new_profiles[profile_id] = profile_data
                     else:
                         logger.info(f"Profile {profile_id} score still low ({profile_data.get('score', 0)})")
+                    
+                except Exception as e:
+                    logger.error(f"Failed to recheck profile {profile_id}: {str(e)}")
                 
                 time.sleep(random.uniform(1, 5))
 
