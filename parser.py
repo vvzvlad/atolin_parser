@@ -19,12 +19,6 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 class AtolinParser:
-    # Score settings
-    SCORE_PER_50_CHARS = 1.1
-    SCORE_PER_PHOTO = 0.8
-    SCORE_PER_GOAL = 0.5
-    SCORE_PER_DAY = 0.8
-
     # Location IDs
     LOCATIONS: Dict[str, int] = {
         # Capitals
@@ -165,9 +159,16 @@ class AtolinParser:
         self.profiles = {}
         self.new_profiles = {}
         
-        # Load min score threshold from env
+        # Load score settings from env
         self.min_score_threshold = float(os.getenv('MIN_SCORE_THRESHOLD', '2.0'))
-        logger.info(f"Using minimum score threshold: {self.min_score_threshold}")
+        self.score_per_50_chars = float(os.getenv('SCORE_PER_50_CHARS', '1.1'))
+        self.score_per_photo = float(os.getenv('SCORE_PER_PHOTO', '0.8'))
+        self.score_per_goal = float(os.getenv('SCORE_PER_GOAL', '0.5'))
+        self.score_per_day = float(os.getenv('SCORE_PER_DAY', '0.8'))
+        
+        logger.info(f"Using score settings: min_threshold={self.min_score_threshold}, "
+                   f"per_50_chars={self.score_per_50_chars}, per_photo={self.score_per_photo}, "
+                   f"per_goal={self.score_per_goal}, per_day={self.score_per_day}")
         
         # Setup proxy if configured
         self.proxies = None
@@ -272,19 +273,19 @@ class AtolinParser:
         
         # Score for description length
         if "about" in profile_data and isinstance(profile_data["about"], str):
-            score += len(profile_data["about"]) // 50 * self.SCORE_PER_50_CHARS
+            score += len(profile_data["about"]) // 50 * self.score_per_50_chars
             
         # Score for additional photos
         if "additional_photos" in profile_data and profile_data["additional_photos"]:
             try:
                 additional_photos = int(profile_data["additional_photos"].split()[0])
-                score += additional_photos * self.SCORE_PER_PHOTO
+                score += additional_photos * self.score_per_photo
             except (ValueError, IndexError):
                 pass
                 
         # Score for goals
         if "goals" in profile_data and isinstance(profile_data["goals"], list):
-            score += sum(self.SCORE_PER_GOAL for goal in profile_data["goals"] if goal != "спонсора")
+            score += sum(self.score_per_goal for goal in profile_data["goals"] if goal != "спонсора")
             
         # Score for profile lifetime
         profile_id = profile_data.get("id")
@@ -295,7 +296,7 @@ class AtolinParser:
                     first_seen = datetime.strptime(stored_profile["first_seen"], "%Y-%m-%d %H:%M:%S")
                     now = datetime.now()
                     days_alive = (now - first_seen).total_seconds() / (24 * 3600)  # Convert to days
-                    score += days_alive * self.SCORE_PER_DAY
+                    score += days_alive * self.score_per_day
                 except (ValueError, TypeError) as e:
                     logger.error(f"Failed to calculate lifetime score for profile {profile_id}: {str(e)}")
             
