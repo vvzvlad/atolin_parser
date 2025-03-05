@@ -166,6 +166,19 @@ class AtolinParser:
         self.score_per_goal = float(os.getenv('SCORE_PER_GOAL', '0.5'))
         self.score_per_day = float(os.getenv('SCORE_PER_DAY', '0.8'))
         
+        # Load request delay settings from env
+        # Format: "min,max" in seconds, e.g. "1,5" for random delay between 1 and 5 seconds
+        request_delay_range = os.getenv('REQUEST_DELAY_RANGE', '1,5')
+        try:
+            delay_min, delay_max = map(float, request_delay_range.split(','))
+            self.request_delay_min = delay_min
+            self.request_delay_max = delay_max
+            logger.info(f"Using request delay range: {self.request_delay_min}-{self.request_delay_max} seconds")
+        except ValueError:
+            logger.warning(f"Invalid REQUEST_DELAY_RANGE format: {request_delay_range}, using default 1-5 seconds")
+            self.request_delay_min = 1.0
+            self.request_delay_max = 5.0
+        
         logger.info(f"Using score settings: min_threshold={self.min_score_threshold}, "
                    f"per_50_chars={self.score_per_50_chars}, per_photo={self.score_per_photo}, "
                    f"per_goal={self.score_per_goal}, per_day={self.score_per_day}")
@@ -220,7 +233,7 @@ class AtolinParser:
                 return response
             except requests.RequestException as e:
                 if attempt < max_retries - 1:
-                    retry_delay = random.uniform(10, 30)
+                    retry_delay = random.uniform(self.request_delay_min * 2, self.request_delay_max * 2)
                     logger.warning(f"Request failed for {url} (attempt {attempt + 1}/{max_retries}): {str(e)}. Retrying in {retry_delay:.1f} seconds...")
                     time.sleep(retry_delay)
                 else:
@@ -304,7 +317,7 @@ class AtolinParser:
 
     def get_profile_details(self, profile_url: str) -> Optional[dict]:
         try:
-            delay = random.uniform(1, 5)
+            delay = random.uniform(self.request_delay_min, self.request_delay_max)
             logger.info(f"Waiting {delay:.2f} seconds before requesting profile details")
             time.sleep(delay)
             
@@ -431,65 +444,40 @@ class AtolinParser:
             return None
 
     def recheck_low_score_profiles(self):
-        """Recheck all profiles with score < min_score_threshold"""
-        low_score_profiles = [p for p in self.profiles.items() if p[1].get('score', 0) < self.min_score_threshold]
+        # Get profiles with score below threshold but above 0
+        low_score_profiles = {
+            profile_id: profile_data 
+            for profile_id, profile_data in self.profiles.items() 
+            if profile_data.get('score', 0) < self.min_score_threshold and profile_data.get('score', 0) > 0
+        }
+        
         if not low_score_profiles:
             logger.info("No low-score profiles to recheck")
             return
             
-        logger.info(f"Found {len(low_score_profiles)} profiles with low score, starting recheck")
+        logger.info(f"Rechecking {len(low_score_profiles)} low-score profiles")
         
-        for index, (profile_id, profile_data) in enumerate(low_score_profiles, 1):
-            if profile_id not in self.new_profiles:
-                logger.info(f"Rechecking low-score profile {profile_id} ({index}/{len(low_score_profiles)})")
+        for profile_id, profile_data in list(low_score_profiles.items()):
+            try:
+                profile_url = f"{self.domain}/anketa/{profile_id}"
+                logger.info(f"Rechecking profile {profile_id}")
                 
-                try:
-                    # Get fresh profile page
-                    response = self.make_request(profile_data['profile_url'])
-                    if not response:
-                        continue
-                        
-                    soup = BeautifulSoup(response.text, 'html.parser')
-                    
-                    # Update basic profile data
-                    link = soup.find("a", class_="viewed")
-                    if link:
-                        img = link.find("img")
-                        if img and "no-photo" not in img.get("class", []):
-                            profile_data["photo_url"] = urljoin(self.domain, img['src'])
-                            
-                        name_elem = link.find("span", class_="user-name")
-                        if name_elem:
-                            profile_data["name_location"] = self.clean_name_location(name_elem.text.strip())
-                            
-                        was_elem = link.find("span", class_="user-was")
-                        if was_elem:
-                            status = was_elem.find("span", class_=["online", "offline", "oldline"])
-                            if status:
-                                profile_data["status"] = status.text.strip()
-                                
-                        photo_count = link.find("span", class_="viewed-count")
-                        if photo_count:
-                            profile_data["additional_photos"] = photo_count.text.strip()
-                    
-                    # Get fresh profile details
-                    if details := self.get_profile_details(profile_data['profile_url']):
-                        profile_data.update(details)
+                updated_profile = self.get_profile_details(profile_url)
+                if updated_profile:
+                    # Update profile data
+                    self.profiles[profile_id].update(updated_profile)
                     
                     # Recalculate score
-                    profile_data['score'] = self.calculate_profile_score(profile_data)
+                    new_score = self.calculate_profile_score(self.profiles[profile_id])
+                    self.profiles[profile_id]['score'] = new_score
                     
-                    if profile_data.get('score', 0) >= self.min_score_threshold:
-                        logger.info(f"Profile {profile_id} score increased to {profile_data['score']}")
-                        # Add to new profiles for notification
-                        self.new_profiles[profile_id] = profile_data
-                    else:
-                        logger.info(f"Profile {profile_id} score still low ({profile_data.get('score', 0)})")
-                    
-                except Exception as e:
-                    logger.error(f"Failed to recheck profile {profile_id}: {str(e)}")
-                
-                time.sleep(random.uniform(1, 5))
+                    logger.info(f"Updated profile {profile_id}, new score: {new_score}")
+                else:
+                    logger.warning(f"Failed to update profile {profile_id}")
+            except Exception as e:
+                logger.error(f"Failed to recheck profile {profile_id}: {str(e)}")
+            
+            time.sleep(random.uniform(self.request_delay_min, self.request_delay_max))
 
     def collect_profiles(self, end_page, age_from, age_to, location_id):
         logger.info(f"Starting collection from page 1 to {end_page}")
@@ -509,7 +497,7 @@ class AtolinParser:
                 self.get_results_container(content)
                 
                 # Random delay between requests to avoid blocking
-                delay = random.uniform(1, 5)
+                delay = random.uniform(self.request_delay_min, self.request_delay_max)
                 logger.info(f"Waiting {delay:.2f} seconds before next request")
                 time.sleep(delay)
             else:
